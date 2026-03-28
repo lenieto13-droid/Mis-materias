@@ -1,431 +1,194 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>App de Materias</title>
-
-<style>
-body {
-    font-family: Arial;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
-    text-align: center;
-}
-
-.container {
-    max-width: 400px;
-    margin: auto;
-}
-
-input, button {
-    padding: 10px;
-    margin: 5px;
-    border-radius: 10px;
-    border: none;
-}
-
-button {
-    background: black;
-    color: white;
-}
-
-.card {
-    background: white;
-    color: black;
-    padding: 10px;
-    margin: 10px;
-    border-radius: 15px;
-}
-</style>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App de Materias</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-align: center;
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            max-width: 400px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            border-radius: 10px;
+            border: none;
+            width: 80%;
+        }
+        button {
+            background: black;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #333;
+        }
+        .card {
+            background: white;
+            color: black;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+    </style>
 </head>
 <body>
 
 <div class="container">
+    <h1>📚 Mis Materias</h1>
 
-<h1>📚 Mis Materias</h1>
+    <div id="auth-section">
+        <input id="email" placeholder="Email" type="email">
+        <input id="password" type="password" placeholder="Contraseña">
+        <br>
+        <button onclick="registrar()">Registrarse</button>
+        <button onclick="login()">Login</button>
+    </div>
 
-<div id="auth">
-    <input id="email" placeholder="Email">
-    <input id="password" type="password" placeholder="Contraseña">
-    <button onclick="registrar()">Registrarse</button>
-    <button onclick="login()">Login</button>
+    <div id="app-section" style="display:none;">
+        <input id="materia-input" placeholder="Nueva materia">
+        <button onclick="agregarMateria()">Agregar</button>
+        <div id="lista-materias"></div>
+        <br>
+        <button onclick="logout()" style="background: #ff4b2b;">Cerrar Sesión</button>
+    </div>
 </div>
-
-<div id="app" style="display:none;">
-    <input id="materia" placeholder="Nueva materia">
-    <button onclick="agregarMateria()">Agregar</button>
-
-    <div id="lista"></div>
-</div>
-
-</div>
-
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js"></script>
-
-<script>
 
 <script type="module">
+    // 1. IMPORTS DESDE CDN (Versión Modular)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
-// IMPORTS MODERNOS
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { getStorage, ref, uploadBytes } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+    // 2. CONFIGURACIÓN (REEMPLAZA CON TUS DATOS REALES)
+    const firebaseConfig = {
+      apiKey: "TU_API_KEY",
+      authDomain: "TU_AUTH_DOMAIN",
+      projectId: "TU_PROJECT_ID",
+      storageBucket: "TU_STORAGE_BUCKET",
+      appId: "TU_APP_ID"
+    };
 
-// 🔴 PEGÁ TU CONFIG ACÁ
-const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "TU_AUTH_DOMAIN",
-  projectId: "TU_PROJECT_ID",
-  storageBucket: "TU_STORAGE_BUCKET",
-  appId: "TU_APP_ID"
-};
+    // 3. INICIALIZAR SERVICIOS
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
 
-// INICIALIZAR
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
+    // --- FUNCIONES GLOBALES (Para que los botones de HTML las vean) ---
 
-// REGISTRO
-window.registrar = function() {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+    // REGISTRO
+    window.registrar = function() {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        createUserWithEmailAndPassword(auth, email, password)
+            .then(() => alert("¡Usuario creado con éxito!"))
+            .catch(e => alert("Error: " + e.message));
+    }
 
-    createUserWithEmailAndPassword(auth, email, password)
-    .then(() => alert("Registrado correctamente"))
-    .catch(e => alert(e.message));
-}
+    // LOGIN
+    window.login = function() {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        signInWithEmailAndPassword(auth, email, password)
+            .catch(e => alert("Error: " + e.message));
+    }
 
-// LOGIN
-window.login = function() {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+    // LOGOUT
+    window.logout = () => signOut(auth);
 
-    signInWithEmailAndPassword(auth, email, password)
-    .then(() => {
-        document.getElementById("auth").style.display = "none";
-        document.getElementById("app").style.display = "block";
-        cargarMaterias();
-    })
-    .catch(e => alert(e.message));
-}
+    // AGREGAR MATERIA
+    window.agregarMateria = async function() {
+        const nombre = document.getElementById("materia-input").value;
+        if(!nombre) return alert("Escribe un nombre");
 
-// AGREGAR MATERIA
-window.agregarMateria = async function() {
-    const nombre = document.getElementById("materia").value;
+        try {
+            await addDoc(collection(db, "materias"), {
+                nombre: nombre,
+                user: auth.currentUser.uid,
+                fecha: new Date()
+            });
+            document.getElementById("materia-input").value = "";
+        } catch (e) {
+            alert("Error al guardar: " + e.message);
+        }
+    }
 
-    await addDoc(collection(db, "materias"), {
-        nombre,
-        user: auth.currentUser.uid
+    // ELIMINAR MATERIA
+    window.eliminarMateria = async function(id) {
+        if(confirm("¿Eliminar esta materia?")) {
+            await deleteDoc(doc(db, "materias", id));
+        }
+    }
+
+    // SUBIR ARCHIVO
+    window.subirArchivo = async function(e, id) {
+        const archivo = e.target.files[0];
+        if(!archivo) return;
+        
+        const storageRef = ref(storage, `archivos/${id}/${archivo.name}`);
+        try {
+            await uploadBytes(storageRef, archivo);
+            alert("Archivo subido correctamente");
+        } catch (e) {
+            alert("Error al subir: " + e.message);
+        }
+    }
+
+    // --- OBSERVADORES (Control de estado) ---
+
+    // Vigilar si el usuario está logueado o no
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            document.getElementById("auth-section").style.display = "none";
+            document.getElementById("app-section").style.display = "block";
+            cargarMaterias(user.uid);
+        } else {
+            document.getElementById("auth-section").style.display = "block";
+            document.getElementById("app-section").style.display = "none";
+            document.getElementById("lista-materias").innerHTML = "";
+        }
     });
 
-    document.getElementById("materia").value = "";
-}
-
-// CARGAR MATERIAS
-function cargarMaterias() {
-    const q = query(collection(db, "materias"), where("user", "==", auth.currentUser.uid));
-
-    onSnapshot(q, (snapshot) => {
-        let html = "";
-
-        snapshot.forEach(docSnap => {
-            const m = docSnap.data();
-
-            html += `
-            <div class="card">
-                <h3>${m.nombre}</h3>
-                <input type="file" onchange="subirArchivo(event,'${docSnap.id}')">
-                <button onclick="eliminar('${docSnap.id}')">Eliminar</button>
-            </div>
-            `;
+    // Cargar materias en tiempo real
+    function cargarMaterias(uid) {
+        const q = query(collection(db, "materias"), where("user", "==", uid));
+        
+        onSnapshot(q, (snapshot) => {
+            let html = "";
+            snapshot.forEach(docSnap => {
+                const m = docSnap.data();
+                html += `
+                <div class="card">
+                    <h3>${m.nombre}</h3>
+                    <input type="file" onchange="subirArchivo(event,'${docSnap.id}')" style="font-size: 10px; width: 90%;">
+                    <br>
+                    <button onclick="eliminarMateria('${docSnap.id}')" style="background:red; width: auto; margin-top:10px;">Eliminar</button>
+                </div>
+                `;
+            });
+            document.getElementById("lista-materias").innerHTML = html;
         });
-
-        document.getElementById("lista").innerHTML = html;
-    });
-}
-
-// ELIMINAR
-window.eliminar = async function(id) {
-    await deleteDoc(doc(db, "materias", id));
-}
-
-// SUBIR ARCHIVO
-window.subirArchivo = async function(e, id) {
-    const archivo = e.target.files[0];
-    const storageRef = ref(storage, "archivos/" + id + "/" + archivo.name);
-
-    await uploadBytes(storageRef, archivo);
-    alert("Archivo subido");
-}
-
-</script>
-
-<script type="module">
-
-// IMPORTS MODERNOS
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { getStorage, ref, uploadBytes } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
-
-// <script type="module">
-
-// IMPORTS MODERNOS
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { getStorage, ref, uploadBytes } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
-
-// 🔴 PEGÁ TU CONFIG ACÁ
-const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "TU_AUTH_DOMAIN",
-  projectId: "TU_PROJECT_ID",
-  storageBucket: "TU_STORAGE_BUCKET",
-  appId: "TU_APP_ID"
-};
-
-// INICIALIZAR
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
-
-// REGISTRO
-window.registrar = function() {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-
-    createUserWithEmailAndPassword(auth, email, password)
-    .then(() => alert("Registrado correctamente"))
-    .catch(e => alert(e.message));
-}
-
-// LOGIN
-window.login = function() {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-
-    signInWithEmailAndPassword(auth, email, password)
-    .then(() => {
-        document.getElementById("auth").style.display = "none";
-        document.getElementById("app").style.display = "block";
-        cargarMaterias();
-    })
-    .catch(e => alert(e.message));
-}
-
-// AGREGAR MATERIA
-window.agregarMateria = async function() {
-    const nombre = document.getElementById("materia").value;
-
-    await addDoc(collection(db, "materias"), {
-        nombre,
-        user: auth.currentUser.uid
-    });
-
-    document.getElementById("materia").value = "";
-}
-
-// CARGAR MATERIAS
-function cargarMaterias() {
-    const q = query(collection(db, "materias"), where("user", "==", auth.currentUser.uid));
-
-    onSnapshot(q, (snapshot) => {
-        let html = "";
-
-        snapshot.forEach(docSnap => {
-            const m = docSnap.data();
-
-            html += `
-            <div class="card">
-                <h3>${m.nombre}</h3>
-                <input type="file" onchange="subirArchivo(event,'${docSnap.id}')">
-                <button onclick="eliminar('${docSnap.id}')">Eliminar</button>
-            </div>
-            `;
-        });
-
-        document.getElementById("lista").innerHTML = html;
-    });
-}
-
-// ELIMINAR
-window.eliminar = async function(id) {
-    await deleteDoc(doc(db, "materias", id));
-}
-
-// SUBIR ARCHIVO
-window.subirArchivo = async function(e, id) {
-    const archivo = e.target.files[0];
-    const storageRef = ref(storage, "archivos/" + id + "/" + archivo.name);
-
-    await uploadBytes(storageRef, archivo);
-    alert("Archivo subido");
-}
-
-</script>
-};
-
-// INICIALIZAR
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
-
-// REGISTRO
-window.registrar = function() {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-
-    createUserWithEmailAndPassword(auth, email, password)
-    .then(() => alert("Registrado correctamente"))
-    .catch(e => alert(e.message));
-}
-
-// LOGIN
-window.login = function() {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-
-    signInWithEmailAndPassword(auth, email, password)
-    .then(() => {
-        document.getElementById("auth").style.display = "none";
-        document.getElementById("app").style.display = "block";
-        cargarMaterias();
-    })
-    .catch(e => alert(e.message));
-}
-
-// AGREGAR MATERIA
-window.agregarMateria = async function() {
-    const nombre = document.getElementById("materia").value;
-
-    await addDoc(collection(db, "materias"), {
-        nombre,
-        user: auth.currentUser.uid
-    });
-
-    document.getElementById("materia").value = "";
-}
-
-// CARGAR MATERIAS
-function cargarMaterias() {
-    const q = query(collection(db, "materias"), where("user", "==", auth.currentUser.uid));
-
-    onSnapshot(q, (snapshot) => {
-        let html = "";
-
-        snapshot.forEach(docSnap => {
-            const m = docSnap.data();
-
-            html += `
-            <div class="card">
-                <h3>${m.nombre}</h3>
-                <input type="file" onchange="subirArchivo(event,'${docSnap.id}')">
-                <button onclick="eliminar('${docSnap.id}')">Eliminar</button>
-            </div>
-            `;
-        });
-
-        document.getElementById("lista").innerHTML = html;
-    });
-}
-
-// ELIMINAR
-window.eliminar = async function(id) {
-    await deleteDoc(doc(db, "materias", id));
-}
-
-// SUBIR ARCHIVO
-window.subirArchivo = async function(e, id) {
-    const archivo = e.target.files[0];
-    const storageRef = ref(storage, "archivos/" + id + "/" + archivo.name);
-
-    await uploadBytes(storageRef, archivo);
-    alert("Archivo subido");
-}
-
-</script>
-}
-
-function login() {
-    let email = emailInput();
-    let pass = passInput();
-
-    auth.signInWithEmailAndPassword(email, pass)
-    .then(()=> mostrarApp())
-    .catch(e=> alert(e.message));
-}
-
-function emailInput() {
-    return document.getElementById("email").value;
-}
-
-function passInput() {
-    return document.getElementById("password").value;
-}
-
-function mostrarApp() {
-    document.getElementById("auth").style.display = "none";
-    document.getElementById("app").style.display = "block";
-    cargarMaterias();
-}
-
-// MATERIAS
-function agregarMateria() {
-    let nombre = document.getElementById("materia").value;
-
-    db.collection("materias").add({
-        nombre: nombre,
-        user: auth.currentUser.uid
-    });
-
-    document.getElementById("materia").value = "";
-}
-
-function cargarMaterias() {
-    db.collection("materias")
-    .where("user","==",auth.currentUser.uid)
-    .onSnapshot(snapshot => {
-        let html = "";
-
-        snapshot.forEach(doc => {
-            let m = doc.data();
-
-            html += `
-            <div class="card">
-                <h3>${m.nombre}</h3>
-                <input type="file" onchange="subirArchivo(event,'${doc.id}')">
-                <button onclick="eliminar('${doc.id}')">Eliminar</button>
-            </div>
-            `;
-        });
-
-        document.getElementById("lista").innerHTML = html;
-    });
-}
-
-// ELIMINAR
-function eliminar(id) {
-    db.collection("materias").doc(id).delete();
-}
-
-// SUBIR ARCHIVO REAL
-function subirArchivo(e, id) {
-    let archivo = e.target.files[0];
-    let ref = storage.ref("archivos/" + id + "/" + archivo.name);
-
-    ref.put(archivo)
-    .then(()=> alert("Archivo subido"));
-}
+    }
 
 </script>
 
