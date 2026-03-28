@@ -167,20 +167,193 @@ window.subirArchivo = async function(e, id) {
 
 </script>
 
-firebase.initializeApp(firebaseConfig);
+<script type="module">
 
-const auth = firebase.auth();
-const db = firebase.firestore();
-const storage = firebase.storage();
+// IMPORTS MODERNOS
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getStorage, ref, uploadBytes } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
-// AUTH
-function registrar() {
-    let email = emailInput();
-    let pass = passInput();
+// <script type="module">
 
-    auth.createUserWithEmailAndPassword(email, pass)
-    .then(()=> alert("Registrado"))
-    .catch(e=> alert(e.message));
+// IMPORTS MODERNOS
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getStorage, ref, uploadBytes } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
+// 🔴 PEGÁ TU CONFIG ACÁ
+const firebaseConfig = {
+  apiKey: "TU_API_KEY",
+  authDomain: "TU_AUTH_DOMAIN",
+  projectId: "TU_PROJECT_ID",
+  storageBucket: "TU_STORAGE_BUCKET",
+  appId: "TU_APP_ID"
+};
+
+// INICIALIZAR
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+// REGISTRO
+window.registrar = function() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    createUserWithEmailAndPassword(auth, email, password)
+    .then(() => alert("Registrado correctamente"))
+    .catch(e => alert(e.message));
+}
+
+// LOGIN
+window.login = function() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    signInWithEmailAndPassword(auth, email, password)
+    .then(() => {
+        document.getElementById("auth").style.display = "none";
+        document.getElementById("app").style.display = "block";
+        cargarMaterias();
+    })
+    .catch(e => alert(e.message));
+}
+
+// AGREGAR MATERIA
+window.agregarMateria = async function() {
+    const nombre = document.getElementById("materia").value;
+
+    await addDoc(collection(db, "materias"), {
+        nombre,
+        user: auth.currentUser.uid
+    });
+
+    document.getElementById("materia").value = "";
+}
+
+// CARGAR MATERIAS
+function cargarMaterias() {
+    const q = query(collection(db, "materias"), where("user", "==", auth.currentUser.uid));
+
+    onSnapshot(q, (snapshot) => {
+        let html = "";
+
+        snapshot.forEach(docSnap => {
+            const m = docSnap.data();
+
+            html += `
+            <div class="card">
+                <h3>${m.nombre}</h3>
+                <input type="file" onchange="subirArchivo(event,'${docSnap.id}')">
+                <button onclick="eliminar('${docSnap.id}')">Eliminar</button>
+            </div>
+            `;
+        });
+
+        document.getElementById("lista").innerHTML = html;
+    });
+}
+
+// ELIMINAR
+window.eliminar = async function(id) {
+    await deleteDoc(doc(db, "materias", id));
+}
+
+// SUBIR ARCHIVO
+window.subirArchivo = async function(e, id) {
+    const archivo = e.target.files[0];
+    const storageRef = ref(storage, "archivos/" + id + "/" + archivo.name);
+
+    await uploadBytes(storageRef, archivo);
+    alert("Archivo subido");
+}
+
+</script>
+};
+
+// INICIALIZAR
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+// REGISTRO
+window.registrar = function() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    createUserWithEmailAndPassword(auth, email, password)
+    .then(() => alert("Registrado correctamente"))
+    .catch(e => alert(e.message));
+}
+
+// LOGIN
+window.login = function() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    signInWithEmailAndPassword(auth, email, password)
+    .then(() => {
+        document.getElementById("auth").style.display = "none";
+        document.getElementById("app").style.display = "block";
+        cargarMaterias();
+    })
+    .catch(e => alert(e.message));
+}
+
+// AGREGAR MATERIA
+window.agregarMateria = async function() {
+    const nombre = document.getElementById("materia").value;
+
+    await addDoc(collection(db, "materias"), {
+        nombre,
+        user: auth.currentUser.uid
+    });
+
+    document.getElementById("materia").value = "";
+}
+
+// CARGAR MATERIAS
+function cargarMaterias() {
+    const q = query(collection(db, "materias"), where("user", "==", auth.currentUser.uid));
+
+    onSnapshot(q, (snapshot) => {
+        let html = "";
+
+        snapshot.forEach(docSnap => {
+            const m = docSnap.data();
+
+            html += `
+            <div class="card">
+                <h3>${m.nombre}</h3>
+                <input type="file" onchange="subirArchivo(event,'${docSnap.id}')">
+                <button onclick="eliminar('${docSnap.id}')">Eliminar</button>
+            </div>
+            `;
+        });
+
+        document.getElementById("lista").innerHTML = html;
+    });
+}
+
+// ELIMINAR
+window.eliminar = async function(id) {
+    await deleteDoc(doc(db, "materias", id));
+}
+
+// SUBIR ARCHIVO
+window.subirArchivo = async function(e, id) {
+    const archivo = e.target.files[0];
+    const storageRef = ref(storage, "archivos/" + id + "/" + archivo.name);
+
+    await uploadBytes(storageRef, archivo);
+    alert("Archivo subido");
+}
+
+</script>
 }
 
 function login() {
