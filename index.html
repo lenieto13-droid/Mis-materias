@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>App de Materias</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    text-align: center;
+}
+
+.container {
+    max-width: 400px;
+    margin: auto;
+}
+
+input, button {
+    padding: 10px;
+    margin: 5px;
+    border-radius: 10px;
+    border: none;
+}
+
+button {
+    background: black;
+    color: white;
+}
+
+.card {
+    background: white;
+    color: black;
+    padding: 10px;
+    margin: 10px;
+    border-radius: 15px;
+}
+</style>
+
+</head>
+<body>
+
+<div class="container">
+
+<h1>📚 Mis Materias</h1>
+
+<div id="auth">
+    <input id="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Contraseña">
+    <button onclick="registrar()">Registrarse</button>
+    <button onclick="login()">Login</button>
+</div>
+
+<div id="app" style="display:none;">
+    <input id="materia" placeholder="Nueva materia">
+    <button onclick="agregarMateria()">Agregar</button>
+
+    <div id="lista"></div>
+</div>
+
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js"></script>
+
+<script>
+
+// 🔴 PEGÁ ACÁ TU CONFIG
+const firebaseConfig = {
+  apiKey: "TU_API_KEY",
+  authDomain: "TU_AUTH_DOMAIN",
+  projectId: "TU_PROJECT_ID",
+  storageBucket: "TU_STORAGE_BUCKET",
+  appId: "TU_APP_ID"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+const storage = firebase.storage();
+
+// AUTH
+function registrar() {
+    let email = emailInput();
+    let pass = passInput();
+
+    auth.createUserWithEmailAndPassword(email, pass)
+    .then(()=> alert("Registrado"))
+    .catch(e=> alert(e.message));
+}
+
+function login() {
+    let email = emailInput();
+    let pass = passInput();
+
+    auth.signInWithEmailAndPassword(email, pass)
+    .then(()=> mostrarApp())
+    .catch(e=> alert(e.message));
+}
+
+function emailInput() {
+    return document.getElementById("email").value;
+}
+
+function passInput() {
+    return document.getElementById("password").value;
+}
+
+function mostrarApp() {
+    document.getElementById("auth").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    cargarMaterias();
+}
+
+// MATERIAS
+function agregarMateria() {
+    let nombre = document.getElementById("materia").value;
+
+    db.collection("materias").add({
+        nombre: nombre,
+        user: auth.currentUser.uid
+    });
+
+    document.getElementById("materia").value = "";
+}
+
+function cargarMaterias() {
+    db.collection("materias")
+    .where("user","==",auth.currentUser.uid)
+    .onSnapshot(snapshot => {
+        let html = "";
+
+        snapshot.forEach(doc => {
+            let m = doc.data();
+
+            html += `
+            <div class="card">
+                <h3>${m.nombre}</h3>
+                <input type="file" onchange="subirArchivo(event,'${doc.id}')">
+                <button onclick="eliminar('${doc.id}')">Eliminar</button>
+            </div>
+            `;
+        });
+
+        document.getElementById("lista").innerHTML = html;
+    });
+}
+
+// ELIMINAR
+function eliminar(id) {
+    db.collection("materias").doc(id).delete();
+}
+
+// SUBIR ARCHIVO REAL
+function subirArchivo(e, id) {
+    let archivo = e.target.files[0];
+    let ref = storage.ref("archivos/" + id + "/" + archivo.name);
+
+    ref.put(archivo)
+    .then(()=> alert("Archivo subido"));
+}
+
+</script>
+
+</body>
+</html>
